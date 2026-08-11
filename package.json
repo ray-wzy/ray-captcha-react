@@ -1,7 +1,7 @@
 {
   "name": "ray-slide-captcha",
   "version": "1.0.0",
-  "description": "滑动拼图验证码 React 组件库",
+  "description": "Slide puzzle captcha React component library",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

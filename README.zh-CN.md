@@ -47,10 +47,13 @@ function Login() {
         onOpenChange={setOpen}
         apiBaseUrl="http://localhost:8000"
         onSuccess={(t) => {
-          console.log('验证通过，token:', t);
+          // 把 `t` 提交到业务接口，后端调用 CaptchaService.consume_token(t) 一次性消费
           setToken(t);
         }}
-        onError={(msg) => console.error('验证失败:', msg)}
+        onError={(err) => {
+          // err: { errorId, message, code?, status?, cause? }
+          // 向用户展示友好提示，或上报到日志系统
+        }}
       />
     </>
   );
@@ -94,21 +97,27 @@ const { success, token } = await api.verify(id, xPosition, dragDurationMs);
 
 ### 错误码映射
 
+默认提示为英文，如需中文可覆盖 `CAPTCHA_ERROR_MESSAGES`：
+
 ```ts
 import { CAPTCHA_ERROR_MESSAGES, type CaptchaError } from 'ray-slide-captcha';
 
+// 默认值（英文）:
 // {
-//   captcha_not_found: '验证码不存在, 请刷新重试',
-//   captcha_expired: '验证码已过期, 请刷新重试',
-//   captcha_position_error: '拼图位置不正确, 请重新拖动',
-//   captcha_too_fast: '拖动过快, 请重新拖试',
+//   captcha_not_found: 'Captcha not found, please refresh',
+//   captcha_expired: 'Captcha expired, please refresh',
+//   captcha_position_error: 'Incorrect puzzle position, please drag again',
+//   captcha_too_fast: 'Drag too fast, please drag again',
 //   ...
 // }
 
-// onError 中的结构化错误：
+// 本地化为中文:
+CAPTCHA_ERROR_MESSAGES.captcha_position_error = '拼图位置不正确, 请重新拖动';
+
+// onError 中的结构化错误:
 // {
 //   errorId: 'captcha_position_error',
-//   message: '拼图位置不正确, 请重新拖动',
+//   message: 'Incorrect puzzle position, please drag again',  // 取自 CAPTCHA_ERROR_MESSAGES
 //   code: 400,
 //   status: 400,
 //   cause: <原始错误>

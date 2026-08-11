@@ -1,11 +1,11 @@
 /**
- * 前端示例入口: 演示如何使用 CaptchaModal
+ * Frontend demo entry: shows how to use CaptchaModal.
  *
- * 运行 (需先安装依赖并构建库):
+ * Run (requires installing dependencies and building the library first):
  *   cd frontend
  *   npm install
  *   npm run build
- *   # 然后在你的项目中引用 examples/Demo.tsx
+ *   # Then reference examples/Demo.tsx from your own project
  */
 import { useState } from 'react';
 import { CaptchaModal } from '../src';
@@ -13,12 +13,13 @@ import { CaptchaModal } from '../src';
 export default function Demo() {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', padding: '1rem' }}>
       <div style={{ textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff', marginBottom: '1rem' }}>
-          滑动拼图验证码 Demo
+          Slide Puzzle Captcha Demo
         </h1>
         <button
           onClick={() => setOpen(true)}
@@ -32,12 +33,18 @@ export default function Demo() {
             cursor: 'pointer',
           }}
         >
-          打开验证码
+          Open captcha
         </button>
 
         {token && (
           <p style={{ marginTop: '1.5rem', fontSize: '0.875rem', color: '#10b981', wordBreak: 'break-all', maxWidth: '28rem' }}>
-            验证成功! token: {token.slice(0, 50)}...
+            Verified! token: {token.slice(0, 50)}...
+          </p>
+        )}
+
+        {errorMsg && (
+          <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#ef4444' }}>
+            {errorMsg}
           </p>
         )}
 
@@ -47,10 +54,12 @@ export default function Demo() {
           apiBaseUrl="http://localhost:8000"
           onSuccess={(t) => {
             setToken(t);
-            // 把 token 提交给业务接口一次性消费
-            console.log('verified token:', t);
+            // Submit `t` to your business endpoint to consume once
           }}
-          onError={(err) => console.error('captcha error:', err)}
+          onError={(err) => {
+            // err: { errorId, message, code?, status?, cause? }
+            setErrorMsg(err.message);
+          }}
         />
       </div>
     </div>

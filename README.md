@@ -47,10 +47,14 @@ function Login() {
         onOpenChange={setOpen}
         apiBaseUrl="http://localhost:8000"
         onSuccess={(t) => {
-          console.log('Verified, token:', t);
+          // Submit `t` to your business endpoint; the backend calls
+          // CaptchaService.consume_token(t) to consume it once.
           setToken(t);
         }}
-        onError={(msg) => console.error('Verification failed:', msg)}
+        onError={(err) => {
+          // err: { errorId, message, code?, status?, cause? }
+          // Show a friendly message to the user or report to your logger.
+        }}
       />
     </>
   );

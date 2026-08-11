@@ -1,8 +1,8 @@
-/* ray-slide-captcha 样式表
- * 使用前: import 'ray-slide-captcha/styles.css'
+/* ray-slide-captcha stylesheet
+ * Usage: import 'ray-slide-captcha/styles.css'
  */
 
-/* ============ 弹窗布局 ============ */
+/* ============ Modal layout ============ */
 .rc-modal-overlay {
   position: fixed;
   inset: 0;
@@ -161,7 +161,7 @@
   line-height: 1.6;
 }
 
-/* ============ rc-slider-captcha 深色主题覆盖 ============ */
+/* ============ rc-slider-captcha dark theme overrides ============ */
 .rc-slider-captcha-control {
   background-color: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
@@ -236,7 +236,7 @@
   border-radius: 10px !important;
   margin-top: 12px !important;
 }
-/* 拼图块碎片垂直居中, 和缺口对齐 */
+/* Puzzle piece vertically centered, aligned with the notch */
 .rc-slider-captcha-jigsaw-puzzle {
   top: 60px !important;
 }

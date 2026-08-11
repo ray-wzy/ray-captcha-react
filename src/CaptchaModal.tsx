@@ -352,7 +352,7 @@ export default function CaptchaModal({
             <div className="rc-modal-error">
               <AlertCircle />
               <span className="rc-modal-error-text">
-                {errorMsg}，{' '}
+                {errorMsg},{' '}
                 <button
                   type="button"
                   onClick={handleRefresh}
