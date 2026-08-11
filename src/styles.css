@@ -1,0 +1,242 @@
+/* ray-slide-captcha 样式表
+ * 使用前: import 'ray-slide-captcha/styles.css'
+ */
+
+/* ============ 弹窗布局 ============ */
+.rc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.rc-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at center, rgba(56, 189, 248, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(2, 6, 12, 0.92), rgba(2, 4, 8, 0.98));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.rc-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: linear-gradient(to bottom, #0f1722, #0a0d14);
+  box-shadow:
+    0 30px 100px -20px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(56, 189, 248, 0.06);
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rc-modal-header {
+  position: relative;
+  padding: 1.5rem 1.5rem 0.75rem;
+}
+
+.rc-modal-close {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rc-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.rc-modal-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rc-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(to bottom right, #0ea5e9, #4f46e5);
+  box-shadow: 0 10px 15px -3px rgba(56, 189, 248, 0.3);
+}
+
+.rc-modal-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #fff;
+}
+
+.rc-modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.025em;
+  margin: 0;
+}
+
+.rc-modal-desc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 0.125rem;
+}
+
+.rc-modal-body {
+  padding: 0 1.5rem 1rem;
+}
+
+.rc-modal-error {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  outline: 1px solid rgba(248, 113, 113, 0.2);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(254, 226, 226, 0.95);
+}
+
+.rc-modal-error svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.rc-modal-error-text {
+  flex: 1;
+}
+
+.rc-modal-retry {
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
+.rc-modal-retry:hover {
+  color: #fee2e2;
+}
+
+.rc-modal-retry:disabled {
+  color: rgba(248, 113, 113, 0.5);
+  cursor: not-allowed;
+}
+
+.rc-modal-footer {
+  padding: 0.25rem 1.5rem 1.5rem;
+}
+
+.rc-modal-footer-text {
+  text-align: center;
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.6;
+}
+
+/* ============ rc-slider-captcha 深色主题覆盖 ============ */
+.rc-slider-captcha-control {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.rc-slider-captcha-control-tips {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.rc-slider-captcha-control-indicator {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+}
+.rc-slider-captcha-control-success .rc-slider-captcha-control-indicator {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  border-color: rgba(16, 185, 129, 0.7) !important;
+}
+.rc-slider-captcha-control-error .rc-slider-captcha-control-indicator,
+.rc-slider-captcha-control-errors {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.55) !important;
+}
+.rc-slider-captcha-button {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+.rc-slider-captcha-button-pc:hover,
+.rc-slider-captcha-button-active {
+  background-color: rgba(56, 189, 248, 0.9) !important;
+  color: #fff !important;
+}
+.rc-slider-captcha-button-verify,
+.rc-slider-captcha-button-success {
+  background-color: rgba(16, 185, 129, 0.85) !important;
+  color: #fff !important;
+}
+.rc-slider-captcha-button-error {
+  background-color: rgba(239, 68, 68, 0.85) !important;
+  color: #fff !important;
+}
+.rc-slider-captcha-jigsaw-refresh {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.rc-slider-captcha-jigsaw-refresh:hover {
+  color: #fff !important;
+  opacity: 1 !important;
+}
+.rc-slider-captcha-loading-text {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.rc-slider-captcha-jigsaw {
+  background-color: rgba(15, 23, 34, 0.6) !important;
+}
+.rc-slider-captcha-load-failed {
+  background-color: rgba(15, 23, 34, 0.6) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.rc-slider-captcha-loading {
+  background-color: rgba(15, 23, 34, 0.6) !important;
+}
+.rc-slider-captcha-loading-icon {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.rc-slider-captcha-panel {
+  padding: 0 !important;
+}
+.rc-slider-captcha-panel-inner {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+.rc-slider-captcha-control {
+  border-radius: 10px !important;
+  margin-top: 12px !important;
+}
+/* 拼图块碎片垂直居中, 和缺口对齐 */
+.rc-slider-captcha-jigsaw-puzzle {
+  top: 60px !important;
+}

@@ -1,0 +1,6 @@
+src/
+examples/
+tsup.config.ts
+tsconfig.json
+*.md
+.trae/
