@@ -1,31 +1,33 @@
 # ray-slide-captcha
 
-滑动拼图验证码 React 组件库。
+Slide puzzle captcha React component library.
 
-基于 [`rc-slider-captcha`](https://github.com/react-rc/rc-slider-captcha) 封装，提供开箱即用的弹窗式交互，配合后端 [`ray-slide-captcha`](https://github.com/ray-wzy/ray-captcha-py) 完成滑动验证全流程。
+[简体中文](./README.zh-CN.md) | English
 
-## 特性
+Built on [`rc-slider-captcha`](https://github.com/react-rc/rc-slider-captcha), providing a ready-to-use modal-style interaction. Works with the backend [`ray-slide-captcha`](https://github.com/ray-wzy/ray-captcha-py) for the full slide verification flow.
 
-- **框架无关**：Next.js / Vite / CRA 等任何 React 18+ 项目可用
-- **弹窗式交互**：内置 Modal，受控开关，ESC 关闭，遮罩点击关闭
-- **完整状态管理**：请求去重、刷新冷却（3s）、错误冷却（2s）、连续错误自动刷新
-- **友好错误提示**：内置错误码 → 中文提示映射，支持自定义
-- **TypeScript 友好**：完整类型导出
-- **深色主题适配**：内置样式覆盖 rc-slider-captcha 默认主题
+## Features
 
-## 安装
+- **Framework-agnostic**: works with any React 18+ project (Next.js / Vite / CRA, etc.)
+- **Modal interaction**: built-in Modal, controlled open state, ESC to close, click overlay to close
+- **Full state management**: request dedup, refresh cooldown (3s), error cooldown (2s), auto-refresh on consecutive errors
+- **Friendly error messages**: built-in error code → user-friendly message mapping, customizable
+- **TypeScript friendly**: full type exports
+- **Dark theme support**: built-in styles override the default rc-slider-captcha theme
+
+## Installation
 
 ```bash
 npm install ray-slide-captcha
-# 或
+# or
 pnpm add ray-slide-captcha
-# 或
+# or
 yarn add ray-slide-captcha
 ```
 
-**peerDependencies**：`react >= 18`、`react-dom >= 18`
+**peerDependencies**: `react >= 18`, `react-dom >= 18`
 
-## 快速开始
+## Quick Start
 
 ```tsx
 import { useState } from 'react';
@@ -38,87 +40,87 @@ function Login() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)}>登录</button>
+      <button onClick={() => setOpen(true)}>Login</button>
 
       <CaptchaModal
         open={open}
         onOpenChange={setOpen}
         apiBaseUrl="http://localhost:8000"
         onSuccess={(t) => {
-          console.log('验证通过，token:', t);
+          console.log('Verified, token:', t);
           setToken(t);
         }}
-        onError={(msg) => console.error('验证失败:', msg)}
+        onError={(msg) => console.error('Verification failed:', msg)}
       />
     </>
   );
 }
 ```
 
-验证通过后拿到的 `token` 提交到业务接口，由后端调用 `CaptchaService.consume_token(token)` 一次性消费。
+After verification succeeds, submit the `token` to your business endpoint. The backend calls `CaptchaService.consume_token(token)` to consume it once.
 
 ## Props
 
-| Prop | 类型 | 必填 | 默认值 | 说明 |
+| Prop | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `open` | `boolean` | 是 | - | 弹窗是否打开 |
-| `onOpenChange` | `(open: boolean) => void` | 是 | - | 开关回调 |
-| `apiBaseUrl` | `string` | 是 | - | 后端服务地址（如 `http://localhost:8000`） |
-| `onSuccess` | `(token: string) => void` | 是 | - | 验证通过回调，返回一次性 token |
-| `onError` | `(error: string) => void` | 否 | - | 验证失败回调 |
-| `title` | `string` | 否 | `请完成安全验证` | 弹窗标题 |
-| `description` | `string` | 否 | `拖动滑块完成拼图` | 弹窗副标题 |
+| `open` | `boolean` | yes | - | Whether the modal is open |
+| `onOpenChange` | `(open: boolean) => void` | yes | - | Open state change callback |
+| `apiBaseUrl` | `string` | yes | - | Backend service URL (e.g. `http://localhost:8000`) |
+| `onSuccess` | `(token: string) => void` | yes | - | Verification success callback, returns one-time token |
+| `onError` | `(error: string) => void` | no | - | Verification failure callback |
+| `title` | `string` | no | `请完成安全验证` | Modal title |
+| `description` | `string` | no | `拖动滑块完成拼图` | Modal subtitle |
 
-## 高级用法
+## Advanced Usage
 
-### 单独使用 API 客户端
+### Using the API client alone
 
-如果你不想用内置 Modal，只要 API 封装：
+If you don't want the built-in Modal and only need the API wrapper:
 
 ```tsx
 import { createCaptchaApi } from 'ray-slide-captcha';
 
 const api = createCaptchaApi('http://localhost:8000');
 
-// 获取挑战
+// Fetch a challenge
 const { id, bgUrl, puzzleUrl } = await api.challenge();
 
-// 校验（dragDurationMs 来自你的滑块组件）
+// Verify (dragDurationMs comes from your slider component)
 const { success, token } = await api.verify(id, xPosition, dragDurationMs);
 ```
 
-### 错误码映射
+### Error code mapping
 
 ```ts
 import { CAPTCHA_ERROR_MESSAGES } from 'ray-slide-captcha';
 
 // {
-//   captcha_not_found: '验证码不存在, 请刷新重试',
-//   captcha_expired: '验证码已过期, 请刷新重试',
-//   captcha_position_error: '拼图位置不正确, 请重新拖动',
-//   captcha_too_fast: '拖动过快, 请重新拖试',
+//   captcha_not_found: 'Captcha not found, please refresh',
+//   captcha_expired: 'Captcha expired, please refresh',
+//   captcha_position_error: 'Incorrect puzzle position, please drag again',
+//   captcha_too_fast: 'Drag too fast, please try again',
 //   ...
 // }
 ```
 
-## 前端防刷机制
+## Frontend Anti-Abuse Mechanisms
 
-| 机制 | 阈值 | 说明 |
+| Mechanism | Threshold | Description |
 | --- | --- | --- |
-| 请求去重 | 同一时刻 | 防止库重复调用 `request` |
-| 刷新冷却 | 3s | 防止用户狂点刷新 |
-| 错误冷却 | 2s | 错误后强制等待 |
-| 连续错误 | 2 次 | 自动刷新挑战 |
-| 拖动时间校验 | 180ms - 60s | 配合后端，过快/过慢拒绝 |
+| Request dedup | same moment | Prevents the library from calling `request` repeatedly |
+| Refresh cooldown | 3s | Prevents users from spamming refresh |
+| Error cooldown | 2s | Forced wait after an error |
+| Consecutive errors | 2 | Auto-refresh the challenge |
+| Drag duration check | 180ms - 60s | Combined with backend, too fast / too slow are rejected |
 
-## 配套后端
+## Companion Backend
 
-前端依赖后端两个接口：
+The frontend depends on two backend endpoints:
 
-- `GET /api/captcha/challenge` — 获取挑战（bgUrl + puzzleUrl + id）
-- `POST /api/captcha/verify` — 校验位置，返回一次性 token
+- `GET /api/captcha/challenge` — fetch a challenge (bgUrl + puzzleUrl + id)
+- `POST /api/captcha/verify` — verify position, return one-time token
 
-后端实现：[ray-captcha-py](https://github.com/ray-wzy/ray-captcha-py)
+Backend implementation: [ray-captcha-py](https://github.com/ray-wzy/ray-captcha-py)
 
 ## License
 
