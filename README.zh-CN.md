@@ -65,11 +65,14 @@ function Login() {
 | --- | --- | --- | --- | --- |
 | `open` | `boolean` | 是 | - | 弹窗是否打开 |
 | `onOpenChange` | `(open: boolean) => void` | 是 | - | 开关回调 |
-| `apiBaseUrl` | `string` | 是 | - | 后端服务地址（如 `http://localhost:8000`） |
-| `onSuccess` | `(token: string) => void` | 是 | - | 验证通过回调，返回一次性 token |
-| `onError` | `(error: string) => void` | 否 | - | 验证失败回调 |
-| `title` | `string` | 否 | `请完成安全验证` | 弹窗标题 |
-| `description` | `string` | 否 | `拖动滑块完成拼图` | 弹窗副标题 |
+| `apiBaseUrl` | `string` | 是 | - | 后端服务地址（如 `http://localhost:8000`）。必须以 `http://` 或 `https://` 开头，尾部斜杠会被自动去掉 |
+| `onSuccess` | `(token: string) => void` | 是 | - | 验证通过回调，返回一次性 token。通过 effect 触发一次，即使弹窗在成功停留期间卸载也安全 |
+| `onError` | `(error: CaptchaError) => void` | 否 | - | 验证失败回调。`CaptchaError` 含 `{ errorId, message, code?, status?, cause? }` |
+| `title` | `string` | 否 | `Please complete the verification` | 弹窗标题 |
+| `description` | `string` | 否 | `Drag the slider to complete the puzzle` | 弹窗副标题 |
+| `zIndex` | `number` | 否 | `1100` | 遮罩层 z-index |
+| `className` | `string` | 否 | - | 追加到弹窗容器的自定义 className |
+| `maskClosable` | `boolean` | 否 | `true` | 点击遮罩是否关闭弹窗 |
 
 ## 高级用法
 
@@ -92,7 +95,7 @@ const { success, token } = await api.verify(id, xPosition, dragDurationMs);
 ### 错误码映射
 
 ```ts
-import { CAPTCHA_ERROR_MESSAGES } from 'ray-slide-captcha';
+import { CAPTCHA_ERROR_MESSAGES, type CaptchaError } from 'ray-slide-captcha';
 
 // {
 //   captcha_not_found: '验证码不存在, 请刷新重试',
@@ -100,6 +103,15 @@ import { CAPTCHA_ERROR_MESSAGES } from 'ray-slide-captcha';
 //   captcha_position_error: '拼图位置不正确, 请重新拖动',
 //   captcha_too_fast: '拖动过快, 请重新拖试',
 //   ...
+// }
+
+// onError 中的结构化错误：
+// {
+//   errorId: 'captcha_position_error',
+//   message: '拼图位置不正确, 请重新拖动',
+//   code: 400,
+//   status: 400,
+//   cause: <原始错误>
 // }
 ```
 

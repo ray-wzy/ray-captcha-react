@@ -65,11 +65,14 @@ After verification succeeds, submit the `token` to your business endpoint. The b
 | --- | --- | --- | --- | --- |
 | `open` | `boolean` | yes | - | Whether the modal is open |
 | `onOpenChange` | `(open: boolean) => void` | yes | - | Open state change callback |
-| `apiBaseUrl` | `string` | yes | - | Backend service URL (e.g. `http://localhost:8000`) |
-| `onSuccess` | `(token: string) => void` | yes | - | Verification success callback, returns one-time token |
-| `onError` | `(error: string) => void` | no | - | Verification failure callback |
-| `title` | `string` | no | `请完成安全验证` | Modal title |
-| `description` | `string` | no | `拖动滑块完成拼图` | Modal subtitle |
+| `apiBaseUrl` | `string` | yes | - | Backend service URL (e.g. `http://localhost:8000`). Must start with `http://` or `https://`; trailing slashes are trimmed. |
+| `onSuccess` | `(token: string) => void` | yes | - | Verification success callback, receives a one-time token. Fired once via an effect — safe even if the modal unmounts during the success hold. |
+| `onError` | `(error: CaptchaError) => void` | no | - | Verification failure callback. `CaptchaError` has `{ errorId, message, code?, status?, cause? }`. |
+| `title` | `string` | no | `Please complete the verification` | Modal title |
+| `description` | `string` | no | `Drag the slider to complete the puzzle` | Modal subtitle |
+| `zIndex` | `number` | no | `1100` | Overlay z-index |
+| `className` | `string` | no | - | Custom className appended to the modal container |
+| `maskClosable` | `boolean` | no | `true` | Whether clicking the backdrop closes the modal |
 
 ## Advanced Usage
 
@@ -92,7 +95,7 @@ const { success, token } = await api.verify(id, xPosition, dragDurationMs);
 ### Error code mapping
 
 ```ts
-import { CAPTCHA_ERROR_MESSAGES } from 'ray-slide-captcha';
+import { CAPTCHA_ERROR_MESSAGES, type CaptchaError } from 'ray-slide-captcha';
 
 // {
 //   captcha_not_found: 'Captcha not found, please refresh',
@@ -100,6 +103,15 @@ import { CAPTCHA_ERROR_MESSAGES } from 'ray-slide-captcha';
 //   captcha_position_error: 'Incorrect puzzle position, please drag again',
 //   captcha_too_fast: 'Drag too fast, please try again',
 //   ...
+// }
+
+// Structured error in onError:
+// {
+//   errorId: 'captcha_position_error',
+//   message: 'Incorrect puzzle position, please drag again',
+//   code: 400,
+//   status: 400,
+//   cause: <original error>
 // }
 ```
 

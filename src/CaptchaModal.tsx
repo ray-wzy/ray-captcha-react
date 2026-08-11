@@ -1,77 +1,180 @@
 /**
- * 滑动拼图验证码弹窗
+ * Slide puzzle captcha modal.
  *
- * 通用 React 组件, 不依赖任何特定框架 (Next.js / Vite / CRA 等均可使用)。
- * 需配合 styles.css 使用: import 'ray-slide-captcha/styles.css'
+ * Framework-agnostic React component (works with Next.js / Vite / CRA, etc.).
+ * Requires the stylesheet: `import 'ray-slide-captcha/styles.css'`
  *
- * 防刷机制:
- *   - 后端: 预生成池 (50 个备用) + 失败惩罚 (连续 6 次 → 冷却 5s) + IP 限流
- *   - 前端: 刷新冷却 (3s) + 请求去重 + 错误冷却 (2s)
- *
- * 依赖:
- *   - rc-slider-captcha (npm i rc-slider-captcha)
- *   - lucide-react      (npm i lucide-react)
- *   - axios / clsx      (已内置)
- *
- * 使用:
- *   import { CaptchaModal } from 'ray-slide-captcha';
- *   import 'ray-slide-captcha/styles.css';
- *
- *   <CaptchaModal
- *     open={open}
- *     onOpenChange={setOpen}
- *     apiBaseUrl="http://localhost:8000"
- *     onSuccess={(token) => { console.log('verified token:', token); }}
- *   />
+ * Anti-abuse:
+ *   - Backend: pre-generated pool (50) + failure penalty (6 fails → 5s cooldown) + IP rate limit
+ *   - Frontend: refresh cooldown (3s) + request dedup + error cooldown (2s)
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ShieldCheck, X, AlertCircle, RotateCcw } from 'lucide-react';
 import SliderCaptcha, { type ActionType } from 'rc-slider-captcha';
 import { createCaptchaApi, CAPTCHA_ERROR_MESSAGES } from './api';
+import { cn } from './utils';
 
-export interface CaptchaModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** 后端服务地址 (如 'http://localhost:8000') */
-  apiBaseUrl: string;
-  onSuccess: (token: string) => void;
-  onError?: (error: string) => void;
-  title?: string;
-  description?: string;
+// ============ Types ============
+export interface CaptchaError {
+  /** Stable error identifier from the backend (e.g. `captcha_position_error`) */
+  errorId: string;
+  /** HTTP status code if available */
+  status?: number;
+  /** Business code if available */
+  code?: number;
+  /** User-friendly message (already localized) */
+  message: string;
+  /** Raw underlying error, if any */
+  cause?: unknown;
 }
 
-// 冷却时间常量
-const REFRESH_COOLDOWN_MS = 3000;  // 刷新按钮冷却 3s
-const ERROR_COOLDOWN_MS = 2000;    // 错误后重试冷却 2s
+export interface CaptchaModalProps {
+  /** Whether the modal is open (controlled) */
+  open: boolean;
+  /** Open state change callback */
+  onOpenChange: (open: boolean) => void;
+  /** Backend service base URL (e.g. `https://captcha.example.com`). Trailing slashes are trimmed. */
+  apiBaseUrl: string;
+  /** Verification success callback, receives a one-time token */
+  onSuccess: (token: string) => void;
+  /** Verification failure callback (structured error) */
+  onError?: (error: CaptchaError) => void;
+  /** Modal title */
+  title?: string;
+  /** Modal subtitle */
+  description?: string;
+  /** Overlay z-index. Default 1100. */
+  zIndex?: number;
+  /** Custom className appended to the modal container */
+  className?: string;
+  /** Whether clicking the backdrop closes the modal. Default true. */
+  maskClosable?: boolean;
+}
 
+// Default copy (English). Pass `title` / `description` to override.
+const DEFAULT_TITLE = 'Please complete the verification';
+const DEFAULT_DESCRIPTION = 'Drag the slider to complete the puzzle';
+const DEFAULT_FOOTER = 'This verification confirms you are a real person, keeping your account secure.';
+
+// Cooldown constants
+const REFRESH_COOLDOWN_MS = 3000;
+const ERROR_COOLDOWN_MS = 2000;
+const SUCCESS_HOLD_MS = 800;
+
+// ============ Helpers ============
+function normalizeBaseUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error('apiBaseUrl must be a non-empty string');
+  }
+  // Reject obvious non-URLs
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new Error(`apiBaseUrl must start with http:// or https:// (got "${trimmed}")`);
+  }
+  return trimmed.replace(/\/+$/, '');
+}
+
+function toCaptchaError(err: unknown): CaptchaError {
+  const e = err as { errorId?: string; code?: number; status?: number; msg?: string; message?: string };
+  const errorId = e?.errorId || 'unknown';
+  const message =
+    e?.msg ||
+    CAPTCHA_ERROR_MESSAGES[errorId] ||
+    (err instanceof Error ? err.message : '') ||
+    'Verification failed, please try again';
+  return {
+    errorId,
+    status: e?.status,
+    code: e?.code,
+    message,
+    cause: err,
+  };
+}
+
+// ============ Component ============
 export default function CaptchaModal({
   open,
   onOpenChange,
   apiBaseUrl,
   onSuccess,
   onError,
-  title = '请完成安全验证',
-  description = '拖动滑块完成拼图',
+  title = DEFAULT_TITLE,
+  description = DEFAULT_DESCRIPTION,
+  zIndex = 1100,
+  className,
+  maskClosable = true,
 }: CaptchaModalProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errorCount, setErrorCount] = useState(0);
-  // 刷新冷却状态
   const [refreshCooldown, setRefreshCooldown] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
-  // 请求去重
   const [isRequesting, setIsRequesting] = useState(false);
-  // 实例 key, 改变时 SliderCaptcha 完全重新挂载 (清库内缓存 + 重新调 request)
+  // Bump to fully remount SliderCaptcha (clears internal cache + re-requests)
   const [instanceKey, setInstanceKey] = useState(0);
-  // rc-slider-captcha 要求 actionRef 类型为 MutableRefObject
-  const captchaRef = useRef<ActionType | undefined>(undefined) as React.MutableRefObject<ActionType | undefined>;
+  // Verified token pending delivery. Decoupled from rc-slider-captcha lifecycle.
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+
+  // rc-slider-captcha requires a mutable ref
+  const captchaRef = useRef<ActionType | undefined>(undefined) as React.MutableRefObject<
+    ActionType | undefined
+  >;
   const currentChallengeRef = useRef<{ id: string; bgUrl: string; puzzleUrl: string } | null>(null);
-  // 请求去重 ref
   const requestInProgressRef = useRef(false);
+  // Track whether the modal is still mounted/open to avoid stale callbacks
+  const isOpenRef = useRef(open);
+  useEffect(() => {
+    isOpenRef.current = open;
+  }, [open]);
 
-  // 根据 apiBaseUrl 创建 API 实例
-  const captchaApi = useMemo(() => createCaptchaApi(apiBaseUrl), [apiBaseUrl]);
+  // Normalize base URL once
+  const normalizedBaseUrl = useMemo(() => normalizeBaseUrl(apiBaseUrl), [apiBaseUrl]);
+  const captchaApi = useMemo(() => createCaptchaApi(normalizedBaseUrl), [normalizedBaseUrl]);
 
-  // 关闭后重置
+  // Stable error handler
+  const handleError = useCallback(
+    (err: unknown) => {
+      const captchaError = toCaptchaError(err);
+      setErrorMsg(captchaError.message);
+      onError?.(captchaError);
+      setRefreshCooldown(true);
+      setCooldownRemaining(ERROR_COOLDOWN_MS);
+      setErrorCount((prev) => {
+        const next = prev + 1;
+        if (next >= 2) {
+          // Auto-refresh after 2 consecutive errors
+          setTimeout(() => {
+            setErrorCount(0);
+            setInstanceKey((k) => k + 1);
+          }, 500);
+        }
+        return next;
+      });
+    },
+    [onError],
+  );
+
+  // ---- Fix #1: deliver token via effect, not setTimeout inside verify ----
+  // When pendingToken is set and the modal is still open, deliver it after a
+  // short hold (so the user sees the success state), then close. If the modal
+  // unmounts or closes before the hold elapses, we still deliver the token
+  // exactly once — but we never call onOpenChange after unmount.
+  useEffect(() => {
+    if (!pendingToken) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      onSuccess(pendingToken);
+      if (isOpenRef.current) {
+        onOpenChange(false);
+      }
+    }, SUCCESS_HOLD_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pendingToken, onSuccess, onOpenChange]);
+
+  // Reset on close
   useEffect(() => {
     if (!open) {
       setErrorMsg(null);
@@ -79,12 +182,13 @@ export default function CaptchaModal({
       setRefreshCooldown(false);
       setCooldownRemaining(0);
       setIsRequesting(false);
+      setPendingToken(null);
       requestInProgressRef.current = false;
       currentChallengeRef.current = null;
     }
   }, [open]);
 
-  // Esc 关闭
+  // Esc to close
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -94,7 +198,7 @@ export default function CaptchaModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onOpenChange]);
 
-  // 刷新冷却倒计时
+  // Refresh cooldown countdown
   useEffect(() => {
     if (!refreshCooldown || cooldownRemaining <= 0) return;
     const timer = setInterval(() => {
@@ -109,11 +213,9 @@ export default function CaptchaModal({
     return () => clearInterval(timer);
   }, [refreshCooldown, cooldownRemaining]);
 
-  // request: 库加载图片时调用, 调后端拿新 challenge
-  // 请求去重, 防止库重复调用
+  // request: called by the lib when loading images. Fetches a new challenge.
   const request = useCallback(async () => {
     if (requestInProgressRef.current) {
-      // 已有请求进行中, 等待当前请求完成
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (currentChallengeRef.current) {
         return {
@@ -134,64 +236,38 @@ export default function CaptchaModal({
     }
   }, [captchaApi]);
 
-  // onVerify: 用户松手后库回调
+  // onVerify: called by the lib after the user releases the slider
   const onVerify = useCallback(
     async (data: { x: number; y: number; sliderOffsetX: number; duration: number }) => {
       const ch = currentChallengeRef.current;
-      if (!ch) throw new Error('challenge 丢失, 请刷新重试');
+      if (!ch) {
+        handleError(new Error('Challenge missing, please refresh'));
+        // Fix #2: do NOT rethrow to the lib — we've already handled it
+        return;
+      }
 
-      let verifiedToken: string | null = null;
       try {
         const res = await captchaApi.verify(ch.id, Math.round(data.x), data.duration);
         if (res.success && res.token) {
-          verifiedToken = res.token;
+          setErrorCount(0);
+          // Decouple token delivery from the lib's lifecycle
+          setPendingToken(res.token);
         } else {
-          throw new Error('验证失败');
+          handleError(new Error('Verification failed'));
         }
-      } catch (err: unknown) {
-        const apiErr = err as { errorId?: string; msg?: string; message?: string };
-        const errId = apiErr?.errorId || 'unknown';
-        const msg =
-          apiErr?.msg ||
-          CAPTCHA_ERROR_MESSAGES[errId] ||
-          (err instanceof Error ? err.message : '') ||
-          '验证失败, 请重试';
-        setErrorMsg(msg);
-        onError?.(msg);
-        // 错误冷却 2s
-        setRefreshCooldown(true);
-        setCooldownRemaining(ERROR_COOLDOWN_MS);
-        // 错误超 2 次自动刷新
-        setErrorCount((prev) => {
-          const next = prev + 1;
-          if (next >= 2) {
-            setTimeout(() => {
-              setErrorCount(0);
-              setInstanceKey((k) => k + 1);
-            }, 500);
-          }
-          return next;
-        });
-        throw err;
-      }
-
-      if (verifiedToken) {
-        setErrorCount(0);
-        const token = verifiedToken;
-        setTimeout(() => {
-          onSuccess(token);
-          onOpenChange(false);
-        }, 800);
+      } catch (err) {
+        handleError(err);
+        // Fix #2: swallow — we've already surfaced the error to the user/caller
       }
     },
-    [captchaApi, onError, onSuccess, onOpenChange],
+    [captchaApi, handleError],
   );
 
-  // 刷新按钮冷却 3s
   const handleRefresh = useCallback(() => {
     if (refreshCooldown) return;
     setErrorMsg(null);
     setErrorCount(0);
+    setPendingToken(null);
     currentChallengeRef.current = null;
     setInstanceKey((k) => k + 1);
     setRefreshCooldown(true);
@@ -206,22 +282,23 @@ export default function CaptchaModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="captcha-modal-title"
-      onClick={() => onOpenChange(false)}
+      style={{ zIndex }}
+      onClick={() => {
+        if (maskClosable) onOpenChange(false);
+      }}
     >
-      {/* 背景遮罩 */}
       <div className="rc-modal-backdrop" aria-hidden />
 
       <div
-        className="rc-modal-container"
+        className={cn('rc-modal-container', className)}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 顶部 */}
         <div className="rc-modal-header">
           <button
             type="button"
             className="rc-modal-close"
             onClick={() => onOpenChange(false)}
-            aria-label="关闭验证码"
+            aria-label="Close captcha"
           >
             <X />
           </button>
@@ -238,7 +315,6 @@ export default function CaptchaModal({
           </div>
         </div>
 
-        {/* 中间: 验证码 */}
         <div className="rc-modal-body">
           <SliderCaptcha
             key={instanceKey}
@@ -249,22 +325,23 @@ export default function CaptchaModal({
             autoRequest
             autoRefreshOnError
             showRefreshIcon
-            // 放宽库内连续错误阈值 3 → 6, 避免"3 次就刷新弹窗"的负体验
-            // 后端真实失败惩罚由 FAIL_PENALTY_THRESHOLD 控制, 这里只是触发自动刷新的 UI 阈值
+            // Relax the lib's internal error threshold 3 → 6 to avoid the
+            // "refresh popup after 3 fails" UX. The real failure penalty is
+            // controlled by the backend's FAIL_PENALTY_THRESHOLD.
             limitErrorCount={6}
-            // 错误停留 500 → 1200ms, 让用户看清错误提示再自动刷新
+            // Hold the error state 500 → 1200ms so the user can read it
             errorHoldDuration={1200}
             bgSize={{ width: 320, height: 180 }}
             puzzleSize={{ width: 60, height: 60, left: 0 }}
             tipText={{
-              default: '按住滑块向右拖动',
-              loading: isRequesting ? '加载中…' : '加载中…',
-              moving: '拖动中…',
-              verifying: '正在验证…',
-              success: '验证通过, 即将关闭',
-              error: '验证失败, 请重试',
-              errors: '连续错误过多, 点击刷新',
-              loadFailed: '加载失败, 点击重试',
+              default: 'Press and drag the slider to the right',
+              loading: 'Loading…',
+              moving: 'Dragging…',
+              verifying: 'Verifying…',
+              success: 'Verified, closing…',
+              error: 'Verification failed, please try again',
+              errors: 'Too many errors, click to refresh',
+              loadFailed: 'Load failed, click to retry',
             }}
             tipIcon={{
               refresh: <RotateCcw style={{ width: 16, height: 16 }} />,
@@ -275,25 +352,22 @@ export default function CaptchaModal({
             <div className="rc-modal-error">
               <AlertCircle />
               <span className="rc-modal-error-text">
-                {errorMsg}，
+                {errorMsg}，{' '}
                 <button
                   type="button"
                   onClick={handleRefresh}
                   disabled={refreshCooldown}
                   className="rc-modal-retry"
                 >
-                  {refreshCooldown ? `重试 (${Math.ceil(cooldownRemaining / 1000)}s)` : '点击重试'}
+                  {refreshCooldown ? `Retry (${Math.ceil(cooldownRemaining / 1000)}s)` : 'Retry'}
                 </button>
               </span>
             </div>
           )}
         </div>
 
-        {/* 底部 */}
         <div className="rc-modal-footer">
-          <p className="rc-modal-footer-text">
-            本验证用于确认是真人操作, 保障账号安全
-          </p>
+          <p className="rc-modal-footer-text">{DEFAULT_FOOTER}</p>
         </div>
       </div>
     </div>
